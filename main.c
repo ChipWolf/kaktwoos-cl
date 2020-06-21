@@ -147,7 +147,7 @@ int main(int argc, char *argv[])
     check(clSetKernelArg(kernel, 0, sizeof(cl_mem), (void *)&data), "clSetKernelArg (0) ");
     check(clSetKernelArg(kernel, 1, sizeof(cl_mem), (void *)&seeds), "clSetKernelArg (1) ");
 
-    size_t work_unit_size = ,19,30;
+    size_t work_unit_size = 4194304;
     size_t block_size = 64;
     cl_ulong offset = start;
     int block = 0;
