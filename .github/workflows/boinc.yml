@@ -17,8 +17,14 @@ jobs:
     - name: build
       run: |
        echo "##[add-path]D:\a\kaktwoos-cl\kaktwoos-cl\lib\x86_64\;D:\a\kaktwoos-cl\kaktwoos-cl\include\"
-       gcc -m64 -Ofast -std=c11 .\main.c -o kaktwoos-opencl.exe -LD:\a\kaktwoos-cl\kaktwoos-cl\lib\x86_64\ -ID:\a\kaktwoos-cl\kaktwoos-cl\include\ -lOpenCL -DWANTED_CACTUS_HEIGHT=21
+       gcc -m64 -Ofast -std=c11 .\main.c -o kaktwoos-ocl.exe -LD:\a\kaktwoos-cl\kaktwoos-cl\lib\x86_64\ -ID:\a\kaktwoos-cl\kaktwoos-cl\include\ -lOpenCL -DWANTED_CACTUS_HEIGHT=21
        dir
+       
+    - uses: actions/upload-artifact@v2
+      with:
+       name: kaktwoos-ocl-win
+       path: .\kaktwoos-ocl.exe
+
 
   linux_opencl:
     name: opencl/release/linux
@@ -32,5 +38,10 @@ jobs:
        ocl-icd-opencl-dev gcc && \
        rm -rf /var/lib/apt/lists/*
 
-       gcc -Ofast -std=c11 main.c -o kaktwoos-cl-linux -lOpenCL -DWANTED_CACTUS_HEIGHT=21
+       gcc -Ofast -std=c11 main.c -o kaktwoos-ocl -lOpenCL -DWANTED_CACTUS_HEIGHT=21
         ls -la
+    - uses: actions/upload-artifact@v2
+      with:
+       name: kaktwoos-ocl-lin
+       path: ./kaktwoos-ocl
+
