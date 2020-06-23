@@ -16,9 +16,8 @@ jobs:
        
     - name: build
       run: |
-       echo "##[add-path]$(PWD)\lib\x86_64\;$(PWD)\include\"
-       msys2 gcc -m64 -Ofast -std=c11 .\main.c -o kaktwoos-opencl.exe -L$(PWD)\lib\x86_64\ -lOpenCL -DWANTED_CACTUS_HEIGHT=21
-       gcc -m64 -Ofast -std=c11 .\main.c -o kaktwoos-opencl.exe -L$(PWD)\lib\x86_64\ -lOpenCL -DWANTED_CACTUS_HEIGHT=21
+       echo "##[add-path]D:\a\kaktwoos-cl\kaktwoos-cl\lib\x86_64\;D:\a\kaktwoos-cl\kaktwoos-cl\include\"
+       gcc -m64 -Ofast -std=c11 .\main.c -o kaktwoos-opencl.exe -LD:\a\kaktwoos-cl\kaktwoos-cl\lib\x86_64\ -lOpenCL -DWANTED_CACTUS_HEIGHT=21
        dir
 
   linux_opencl:
