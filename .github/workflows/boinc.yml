@@ -13,11 +13,10 @@ jobs:
       run: |
        msys2 wget https://github.com/GPUOpen-LibrariesAndSDKs/OCL-SDK/files/1406216/lightOCLSDK.zip -O amdocl.zip
        jar xf amdocl.zip 
-       cp D:\a\kaktwoos-cl\kaktwoos-cl\include\* D:\a\kaktwoos-cl\kaktwoos-cl\
        
     - name: build
       run: |
-       echo "##[add-path]D:\a\kaktwoos-cl\kaktwoos-cl\lib\x86_64\;D:\a\kaktwoos-cl\kaktwoos-cl\include\;D:\a\kaktwoos-cl\kaktwoos-cl\include\CL\"
+       echo "##[add-path]D:\a\kaktwoos-cl\kaktwoos-cl\lib\x86_64\;D:\a\kaktwoos-cl\kaktwoos-cl\include\"
        gcc -m64 -Ofast -std=c11 .\main.c -o kaktwoos-opencl.exe -LD:\a\kaktwoos-cl\kaktwoos-cl\lib\x86_64\ -ID:\a\kaktwoos-cl\kaktwoos-cl\include\ -lOpenCL -DWANTED_CACTUS_HEIGHT=21
        dir
 
