@@ -13,6 +13,7 @@ jobs:
       run: |
        msys2 wget https://github.com/GPUOpen-LibrariesAndSDKs/OCL-SDK/files/1406216/lightOCLSDK.zip -O amdocl.zip
        jar xf amdocl.zip 
+       cp D:\a\kaktwoos-cl\kaktwoos-cl\include\* D:\a\kaktwoos-cl\kaktwoos-cl\
        
     - name: build
       run: |
