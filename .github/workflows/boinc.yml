@@ -1,0 +1,15 @@
+name: boinc-open-cl
+
+on: [push]
+
+jobs:
+  linux_opencl:
+    name: opencl/release/linux
+    runs-on: [ubuntu-latest]
+    container: nvidia/opencl:devel-ubuntu18.04
+    steps:
+    - uses: actions/checkout@v2
+    - name: build
+      run: |
+       gcc -Ofast -std=c11 main.c -o kaktwoos-cl-linux -lOpenCL -DWANTED_CACTUS_HEIGHT=21
+        ls -la
