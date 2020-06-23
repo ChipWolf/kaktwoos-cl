@@ -13,7 +13,7 @@ jobs:
       run: |
        msys2 wget https://github.com/GPUOpen-LibrariesAndSDKs/OCL-SDK/files/1406216/lightOCLSDK.zip -O amdocl.zip
        jar xf amdocl.zip 
-        choco install -y gcc
+       
     - name: build
       run: |
        echo "##[add-path]$(PWD)\lib\x86_64\;$(PWD)\include\"
