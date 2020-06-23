@@ -11,5 +11,9 @@ jobs:
     - uses: actions/checkout@v2
     - name: build
       run: |
+       apt-get update && apt-get install -y --no-install-recommends \
+       ocl-icd-opencl-dev && \
+       rm -rf /var/lib/apt/lists/*
+
        gcc -Ofast -std=c11 main.c -o kaktwoos-cl-linux -lOpenCL -DWANTED_CACTUS_HEIGHT=21
         ls -la
