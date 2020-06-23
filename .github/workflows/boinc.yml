@@ -3,8 +3,8 @@ name: boinc-opencl
 on: [push]
 
 jobs:
-  windows_cuda:
-    name: cuda/release/windows
+  windows_opencl:
+    name: opencl/release/windows
     runs-on: [windows-latest]
     steps:
     - uses: actions/checkout@v2
