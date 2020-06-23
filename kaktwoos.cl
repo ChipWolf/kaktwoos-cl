@@ -61,7 +61,8 @@ kernel void crack(global int *data, global ulong* answer)
 
         short terrainHeight = (extract(heightMap, initialPos) + FLOOR_LEVEL + 1) * 2;
         initialPosY = nextIntUnknown(&seed, terrainHeight);
-
+        
+        #pragma unroll 10
         for (short a = 0; a < 10; a++) {
             posX = initialPosX + next(&seed, 3) - next(&seed, 3);
             posY = initialPosY + next(&seed, 2) - next(&seed, 2);
@@ -98,6 +99,7 @@ kernel void crack(global int *data, global ulong* answer)
 
             short offset = 1 + nextIntUnknown(&seed, nextInt(&seed, 3) + 1);
 
+            #pragma unroll 4
             for (short j = 0; j < offset; j++) {
                 if ((posY + j - 1) > extract(heightMap, posX + posZ * 32) + FLOOR_LEVEL || posY < 0) continue;
                 if ((posY + j) <= extract(heightMap, (posX + 1) + posZ * 32) + FLOOR_LEVEL) continue;
