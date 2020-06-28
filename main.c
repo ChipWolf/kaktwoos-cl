@@ -37,6 +37,17 @@ int main(int argc, char *argv[])
     char *strend;
     size_t seedbuffer_size;
 
+    struct checkpoint_vars {
+        cl_ulong offset;
+		cl_ulong start;
+        int block;
+		double elapsed_chkpoint;
+        int total_seed_count;
+
+	};
+
+    FILE *checkpoint_data;
+
     if (argc % 2 != 1) {
         printf("Failed to parse arguments\n");
         exit(EXIT_FAILURE);
@@ -155,20 +166,54 @@ int main(int argc, char *argv[])
     int block = 0;
     arguments[1] = work_unit_size;
 
-    clock_t start_time, end_time;
+    clock_t start_time, end_time, elapsed_chkpoint;
 
     cl_ulong found_seeds[MAX_SEED_BUFFER_SIZE];
     int total_seed_count = 0;
-    double last_print = 0;
+
+    int chkpoint_ready = 0;
 
     start_time = clock();
+
+    checkpoint_data = fopen("kaktpoint.txt", "rb");
+
+    if (!checkpoint_data) {
+     printf("No checkpoint to load \n");
+     }
+
+     else {
+     printf("Checkpoint loaded, restored seed: \n");
+     struct checkpoint_vars data_store;
+    
+	 fread(&data_store, sizeof(data_store), 1, checkpoint_data);
+	 
+     offset = data_store.offset;
+	 start = data_store.start;
+     block = data_store.block;
+	 elapsed_chkpoint = data_store.elapsed_chkpoint;
+     total_seed_count = data_store.total_seed_count;
+
+     fread(found_seeds, sizeof(cl_ulong), total_seed_count, checkpoint_data);
+
+	  for (int i = 0; i < total_seed_count; i++) {
+        printf("%"SCNd64 "\n", found_seeds[i]);
+        }
+		 
+      printf("Offset: %d\n Start: %d\n block: %d\n elapsed: %d\n total seed count: %d\n",offset,start,block,elapsed_chkpoint, total_seed_count);
+    }
+
+    fclose(checkpoint_data);
+
     while (offset < end) {
+
         arguments[0] =  block + start / work_unit_size;
+
         check(clEnqueueWriteBuffer(command_queue, data, CL_TRUE, 0, 10 * sizeof(int), arguments, 0, NULL, NULL), "clEnqueueWriteBuffer ");
         check(clEnqueueNDRangeKernel(command_queue, kernel, 1, NULL, &work_unit_size, &block_size, 0, NULL, NULL), "clEnqueueNDRangeKernel ");
 
         int *data_out = malloc(sizeof(int) * 10);
         check(clEnqueueReadBuffer(command_queue, data, CL_TRUE, 0, sizeof(int) * 10, data_out, 0, NULL, NULL), "clEnqueueReadBuffer (data) ");
+
         int seed_count = data_out[2];
 
         seedbuffer_size = sizeof(cl_ulong) + sizeof(cl_ulong) * seed_count;
@@ -189,23 +234,49 @@ int main(int argc, char *argv[])
         double elapsed = (double)(end_time - start_time) / CLOCKS_PER_SEC;
         offset += work_unit_size;
         block++;
+        chkpoint_ready++;
+
+        if (chkpoint_ready >= 200){  // 1000 for 1bil seeds before checkpoint
+
+            remove("kaktpoint.txt");
+            checkpoint_data = fopen("kaktpoint.txt", "wb");
+
+            struct checkpoint_vars data_store;
+            data_store.offset = offset;
+			data_store.start = start;
+            data_store.block = block;
+			data_store.elapsed_chkpoint = (elapsed_chkpoint + (double)(end_time - start_time) / CLOCKS_PER_SEC);
+            data_store.total_seed_count = total_seed_count;
+			
+            fwrite(&data_store, sizeof(data_store), 1, checkpoint_data);
+
+            fwrite(found_seeds, sizeof(cl_ulong), total_seed_count, checkpoint_data);
+
+            chkpoint_ready = 0;
+         }
+
         free(result);
         free(data_out);
-    }
+
+        fclose(checkpoint_data);
+
+    } // End of seed feed and processing loop
 
      double elapsed = (double)(end_time - start_time) / CLOCKS_PER_SEC;
-     fprintf(stderr,"Speed: %.2fm/s \n", (offset - start) / elapsed / 1000000);
-      last_print = elapsed;
+     fprintf(stderr,"Speed: %.2fm/s \n", (offset - start) / (elapsed_chkpoint + elapsed) / 1000000);
 
-    fprintf(stderr, "Done\n");
+    fprintf(stderr,"Done\n");
     fprintf(stderr,"Processed %"SCNd64 " seeds in %f seconds\n",
             end - start,
-            (double)(end_time - start_time) / CLOCKS_PER_SEC);
+            elapsed_chkpoint + ((double)(end_time - start_time) / CLOCKS_PER_SEC));
+
     fprintf(stderr,"Found seeds: \n");
-    for (int i = 0; i < total_seed_count; i++) {
+
+   for (int i = 0; i < total_seed_count; i++) {
         fprintf(stderr,"    %"SCNd64 "\n", found_seeds[i]);
     }
-
+    
+	remove("kaktpoint.txt");
     check(clFlush(command_queue), "clFlush ");
     check(clFinish(command_queue), "clFinish ");
     check(clReleaseKernel(kernel), "clReleaseKernel ");
