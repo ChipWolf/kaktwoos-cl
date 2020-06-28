@@ -37,16 +37,14 @@ int main(int argc, char *argv[])
     char *strend;
     size_t seedbuffer_size;
 
+	FILE *checkpoint_data;
     struct checkpoint_vars {
         cl_ulong offset;
 		cl_ulong start;
         int block;
 		double elapsed_chkpoint;
         int total_seed_count;
-
 	};
-
-    FILE *checkpoint_data;
 
     if (argc % 2 != 1) {
         printf("Failed to parse arguments\n");
@@ -113,17 +111,21 @@ int main(int argc, char *argv[])
     fclose(kernel_file);
 
     cl_platform_id platform_id = NULL;
-    cl_device_id device_ids[1];
+    cl_device_id *device_ids;
     cl_uint num_devices;
     cl_uint num_platforms;
     cl_int err;
 
     check(clGetPlatformIDs(1, &platform_id, &num_platforms), "clGetPlatformIDs ");
-    check(clGetDeviceIDs(platform_id, CL_DEVICE_TYPE_GPU, 1, device_ids, &num_devices), "clGetDeviceIDs ");
+    check(clGetDeviceIDs(platform_id, CL_DEVICE_TYPE_GPU, 0, NULL, &num_devices), "clGetDeviceIDs ");
+	
+	device_ids = malloc(num_devices * sizeof(*device_ids));
+    check(clGetDeviceIDs(platform_id, CL_DEVICE_TYPE_GPU, num_devices, device_ids, &num_devices), "clGetDeviceIDs ");
 
-    cl_context context = clCreateContext(NULL, 1, device_ids, NULL, NULL, &err);
+    cl_context context = clCreateContext(NULL, 1, device_ids + gpuIndex, NULL, NULL, &err);
+	
     check(err, "clCreateContext ");
-    cl_command_queue command_queue = clCreateCommandQueueWithProperties(context, device_ids[0], NULL, &err);
+    cl_command_queue command_queue = clCreateCommandQueueWithProperties(context, device_ids[gpuIndex], NULL, &err);
     check(err, "clCreateCommandQueueWithProperties ");
 
     seedbuffer_size = 0x40 * sizeof(cl_ulong);
@@ -141,14 +143,14 @@ int main(int argc, char *argv[])
             &kernel_length,
             &err);
     check(err, "clCreateProgramWithSource ");
-    err = clBuildProgram(program, 1, device_ids, NULL, NULL, NULL);
+    err = clBuildProgram(program, 1, device_ids + gpuIndex, NULL, NULL, NULL);
 
     if (err != CL_SUCCESS) {
         size_t len;
-        clGetProgramBuildInfo(program, device_ids[0], CL_PROGRAM_BUILD_LOG, 0, NULL, &len);
+        clGetProgramBuildInfo(program, device_ids[gpuIndex], CL_PROGRAM_BUILD_LOG, 0, NULL, &len);
 
         char *info = malloc(len);
-        clGetProgramBuildInfo(program, device_ids[0], CL_PROGRAM_BUILD_LOG, len, info, NULL);
+        clGetProgramBuildInfo(program, device_ids[gpuIndex], CL_PROGRAM_BUILD_LOG, len, info, NULL);
         printf("%s\n", info);
         free(info);
     }
@@ -170,7 +172,6 @@ int main(int argc, char *argv[])
 
     cl_ulong found_seeds[MAX_SEED_BUFFER_SIZE];
     int total_seed_count = 0;
-
     int chkpoint_ready = 0;
 
     start_time = clock();
@@ -199,7 +200,7 @@ int main(int argc, char *argv[])
         printf("%"SCNd64 "\n", found_seeds[i]);
         }
 		 
-      printf("Offset: %d\n Start: %d\n block: %d\n elapsed: %d\n total seed count: %d\n",offset,start,block,elapsed_chkpoint, total_seed_count);
+      printf("Offset: %d\n Start: %d\n block: %d\n elapsed: %d\n total seed count: %d\n",offset,start,block,elapsed_chkpoint,total_seed_count);
     }
 
     fclose(checkpoint_data);
