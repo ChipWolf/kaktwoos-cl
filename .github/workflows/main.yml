@@ -35,10 +35,9 @@ jobs:
     - name: build
       run: |
        apt-get update && apt-get install -y \
-       ocl-icd-opencl-dev gcc && \
+       ocl-icd-opencl-dev gcc libboinc-app-dev libboinc7 && \
        rm -rf /var/lib/apt/lists/*
-
-       gcc -Ofast -std=c11 main.c -o kaktwoos-ocl -lOpenCL -DWANTED_CACTUS_HEIGHT=21
+       gcc -Ofast -std=c11 main.c -o kaktwoos-ocl -lOpenCL -I/usr/include/boinc/ -I/usr/include/boinc/api -L/usr/share/boinc-dev/lib/ -lboinc_api -lboinc -DWANTED_CACTUS_HEIGHT=21
         ls -la
     - uses: actions/upload-artifact@v2
       with:
