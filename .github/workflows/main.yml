@@ -18,6 +18,10 @@ jobs:
        
     - name: build
       run: |
+       cd lib
+       dir
+       msys2 make -f Makefile.mingw
+       dir
        echo "##[add-path]D:\a\kaktwoos-cl\kaktwoos-cl\lib\x86_64\;D:\a\kaktwoos-cl\kaktwoos-cl\include\"
        gcc -m64 -Ofast -std=c11 .\main.c -o kaktwoos-ocl.exe -LD:\a\kaktwoos-cl\kaktwoos-cl\lib\x86_64\ -ID:\a\kaktwoos-cl\kaktwoos-cl\include\ -lOpenCL -DWANTED_CACTUS_HEIGHT=21
        dir
