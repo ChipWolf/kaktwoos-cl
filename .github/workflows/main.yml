@@ -1,6 +1,8 @@
 name: build-opencl
 
-on: [push]
+on:
+  push:
+    branches: [ boinc-multi-checkp ]
 
 jobs:
   windows_opencl:
