@@ -5,6 +5,7 @@
 #include <string.h>
 #include <time.h>
 #include <inttypes.h>
+#include "boinc_api.h"
 
 #define CL_TARGET_OPENCL_VERSION 200
 
@@ -22,6 +23,13 @@
 
 int main(int argc, char *argv[])
 {
+    BOINC_OPTIONS options;
+
+    boinc_options_defaults(options);
+    options.normal_thread_priority = true;
+    boinc_init_options(&options);
+    boinc_init();
+
     int gpuIndex = 0;
     cl_ulong start = 0;
     cl_ulong end = 0;
@@ -37,7 +45,7 @@ int main(int argc, char *argv[])
     char *strend;
     size_t seedbuffer_size;
 
-	FILE *checkpoint_data;
+    FILE *checkpoint_data;
     struct checkpoint_vars {
         cl_ulong offset;
 		cl_ulong start;
@@ -98,8 +106,8 @@ int main(int argc, char *argv[])
         chunkSeedBottom4Bits,
         chunkSeedBit5
     };
-    FILE *kernel_file = fopen("kaktwoos.cl", "r");
 
+    FILE *kernel_file = boinc_fopen("kaktwoos.cl", "r");
     if (!kernel_file) {
         printf("Failed to open kernel");
         exit(1);
@@ -108,7 +116,7 @@ int main(int argc, char *argv[])
     char *kernel_src = malloc(KERNEL_BUFFER_SIZE);
     size_t kernel_length = fread(kernel_src, 1, KERNEL_BUFFER_SIZE, kernel_file);
 
-    fclose(kernel_file);
+    boinc_fclose(kernel_file);
 
     cl_platform_id platform_id = NULL;
     cl_device_id *device_ids;
@@ -118,14 +126,14 @@ int main(int argc, char *argv[])
 
     check(clGetPlatformIDs(1, &platform_id, &num_platforms), "clGetPlatformIDs ");
     check(clGetDeviceIDs(platform_id, CL_DEVICE_TYPE_GPU, 0, NULL, &num_devices), "clGetDeviceIDs ");
-	
+
 	device_ids = malloc(num_devices * sizeof(*device_ids));
     check(clGetDeviceIDs(platform_id, CL_DEVICE_TYPE_GPU, num_devices, device_ids, &num_devices), "clGetDeviceIDs ");
 
-    cl_context context = clCreateContext(NULL, 1, device_ids + gpuIndex, NULL, NULL, &err);
-	
+        cl_context context = clCreateContext(NULL, 1, device_ids + gpuIndex, NULL, NULL, &err);
     check(err, "clCreateContext ");
-    cl_command_queue command_queue = clCreateCommandQueueWithProperties(context, device_ids[gpuIndex], NULL, &err);
+
+        cl_command_queue command_queue = clCreateCommandQueueWithProperties(context, device_ids[gpuIndex], NULL, &err);
     check(err, "clCreateCommandQueueWithProperties ");
 
     seedbuffer_size = 0x40 * sizeof(cl_ulong);
@@ -164,46 +172,50 @@ int main(int argc, char *argv[])
     size_t work_unit_size = 1048576;
     size_t block_size = 256;
 
-    cl_ulong offset = start;
-    int block = 0;
     arguments[1] = work_unit_size;
 
-    clock_t start_time, end_time, elapsed_chkpoint;
-
-    cl_ulong found_seeds[MAX_SEED_BUFFER_SIZE];
+    cl_ulong offset = start;
+    int block = 0;
     int total_seed_count = 0;
     int chkpoint_ready = 0;
+    double seedrange = (end - start);
 
+    cl_ulong found_seeds[MAX_SEED_BUFFER_SIZE];
+
+	clock_t start_time, end_time, elapsed_chkpoint;
     start_time = clock();
 
-    checkpoint_data = fopen("kaktpoint.txt", "rb");
+    checkpoint_data = boinc_fopen("kaktpoint.txt", "rb");
 
     if (!checkpoint_data) {
      printf("No checkpoint to load \n");
      }
-
      else {
-     printf("Checkpoint loaded, restored seed: \n");
-     struct checkpoint_vars data_store;
-    
-	 fread(&data_store, sizeof(data_store), 1, checkpoint_data);
-	 
-     offset = data_store.offset;
-	 start = data_store.start;
-     block = data_store.block;
-	 elapsed_chkpoint = data_store.elapsed_chkpoint;
-     total_seed_count = data_store.total_seed_count;
 
-     fread(found_seeds, sizeof(cl_ulong), total_seed_count, checkpoint_data);
+	    void boinc_begin_critical_section();
 
-	  for (int i = 0; i < total_seed_count; i++) {
-        printf("%"SCNd64 "\n", found_seeds[i]);
+        printf("Checkpoint loaded, restored seed: \n");
+        struct checkpoint_vars data_store;
+
+	    fread(&data_store, sizeof(data_store), 1, checkpoint_data);
+
+        offset = data_store.offset;
+	start = data_store.start;
+        block = data_store.block;
+	elapsed_chkpoint = data_store.elapsed_chkpoint;
+        total_seed_count = data_store.total_seed_count;
+
+        fread(found_seeds, sizeof(cl_ulong), total_seed_count, checkpoint_data);
+
+	    for (int i = 0; i < total_seed_count; i++) {
+           printf("%"SCNd64 "\n", found_seeds[i]);
         }
-		 
-      printf("Offset: %d\n Start: %d\n block: %d\n elapsed: %d\n total seed count: %d\n",offset,start,block,elapsed_chkpoint,total_seed_count);
+
+        printf("Offset: %d\n Start: %d\n block: %d\n elapsed: %d\n total seed count: %d\n",offset,start,block,elapsed_chkpoint,total_seed_count);
+	void boinc_end_critical_section();
     }
 
-    fclose(checkpoint_data);
+    boinc_fclose(checkpoint_data);
 
     while (offset < end) {
 
@@ -216,31 +228,34 @@ int main(int argc, char *argv[])
         check(clEnqueueReadBuffer(command_queue, data, CL_TRUE, 0, sizeof(int) * 10, data_out, 0, NULL, NULL), "clEnqueueReadBuffer (data) ");
 
         int seed_count = data_out[2];
-
         seedbuffer_size = sizeof(cl_ulong) + sizeof(cl_ulong) * seed_count;
+
         cl_ulong *result = malloc(sizeof(cl_ulong) + sizeof(cl_ulong) * seed_count);
 	check(clEnqueueReadBuffer(command_queue, seeds, CL_TRUE, 0, seedbuffer_size, result, 0, NULL, NULL), "clEnqueueReadBuffer (seeds) ");
 
 	end_time = clock();
 
-          for (int i = 0; i < seed_count; i++) {
+        for (int i = 0; i < seed_count; i++) {
             fprintf(stderr,"    Found seed: %"SCNd64 ", %llu, height: %d\n",
                     result[i],
                     result[i] & ((1ULL << 48ULL) - 1ULL),
                     (int)(result[i] >> 58ULL));
+
             fprintf(stderr, "%"SCNd64 "\n", (cl_ulong)result[i]);
             found_seeds[total_seed_count++] = result[i];
-        }
+	    }
 
         double elapsed = (double)(end_time - start_time) / CLOCKS_PER_SEC;
         offset += work_unit_size;
         block++;
         chkpoint_ready++;
 
-        if (chkpoint_ready >= 200){  // 1000 for 1bil seeds before checkpoint
+        if (chkpoint_ready >= 500 || int boinc_time_to_checkpoint() ){  // 500 for 0.5bil seeds before checkpoint
+
+			void boinc_begin_critical_section(); // Boinc should not interrupt this
 
             remove("kaktpoint.txt");
-            checkpoint_data = fopen("kaktpoint.txt", "wb");
+            checkpoint_data = boinc_fopen("kaktpoint.txt", "wb");
 
             struct checkpoint_vars data_store;
             data_store.offset = offset;
@@ -248,23 +263,29 @@ int main(int argc, char *argv[])
             data_store.block = block;
 			data_store.elapsed_chkpoint = (elapsed_chkpoint + (double)(end_time - start_time) / CLOCKS_PER_SEC);
             data_store.total_seed_count = total_seed_count;
-			
-            fwrite(&data_store, sizeof(data_store), 1, checkpoint_data);
 
+            fwrite(&data_store, sizeof(data_store), 1, checkpoint_data);
             fwrite(found_seeds, sizeof(cl_ulong), total_seed_count, checkpoint_data);
 
             chkpoint_ready = 0;
+	    boinc_fclose(checkpoint_data);
+
+            double fraction_done = ((offset - start) / (seedrange));
+            boinc_fraction_done(fraction_done);
+
+	    void boinc_end_critical_section();
+	    void boinc_checkpoint_completed(); // Checkpointing completed
          }
 
         free(result);
         free(data_out);
 
-        fclose(checkpoint_data);
-
     } // End of seed feed and processing loop
 
-     double elapsed = (double)(end_time - start_time) / CLOCKS_PER_SEC;
-     fprintf(stderr,"Speed: %.2fm/s \n", (offset - start) / (elapsed_chkpoint + elapsed) / 1000000);
+    void boinc_begin_critical_section();
+
+    double elapsed = (double)(end_time - start_time) / CLOCKS_PER_SEC;
+    fprintf(stderr,"Speed: %.2fm/s \n", (offset - start) / (elapsed_chkpoint + elapsed) / 1000000);
 
     fprintf(stderr,"Done\n");
     fprintf(stderr,"Processed %"SCNd64 " seeds in %f seconds\n",
@@ -276,8 +297,8 @@ int main(int argc, char *argv[])
    for (int i = 0; i < total_seed_count; i++) {
         fprintf(stderr,"    %"SCNd64 "\n", found_seeds[i]);
     }
-    
-	remove("kaktpoint.txt");
+
+    remove("kaktpoint.txt");
     check(clFlush(command_queue), "clFlush ");
     check(clFinish(command_queue), "clFinish ");
     check(clReleaseKernel(kernel), "clReleaseKernel ");
@@ -286,6 +307,10 @@ int main(int argc, char *argv[])
     check(clReleaseMemObject(data), "clReleaseMemObject (data) ");
     check(clReleaseCommandQueue(command_queue), "clReleaseCommandQueue ");
     check(clReleaseContext(context), "clReleaseContext ");
+
+    fflush(stderr);
+    void boinc_end_critical_section();
+    int boinc_finish(int status);
     return 0;
 
 }
